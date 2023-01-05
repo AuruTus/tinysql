@@ -41,8 +41,10 @@ const (
 	prefixLen = 1 + idLen /*tableID*/ + 2
 	// RecordRowKeyLen is public for calculating average row size.
 	RecordRowKeyLen       = prefixLen + idLen /*handle*/
+	IndexSeekKeyLen       = prefixLen + idLen /*indexID*/
 	tablePrefixLength     = 1
 	recordPrefixSepLength = 2
+	indexPrefixSepLength  = 2
 )
 
 // TableSplitKeyLen is the length of key 't{table_id}' which is used for table split.
@@ -135,6 +137,12 @@ func EncodeIndexSeekKey(tableID int64, idxID int64, encodedValue []byte) kv.Key 
 	return key
 }
 
+func isIndexSeekKeyValid(key kv.Key) bool {
+	return len(key) >= IndexSeekKeyLen ||
+		key.HasPrefix(tablePrefix) ||
+		key[tablePrefixLength+idLen:].HasPrefix(indexPrefixSep)
+}
+
 // DecodeIndexKeyPrefix decodes the key and gets the tableID, indexID, indexValues.
 func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues []byte, err error) {
 	/* Project 1-2: your code here
@@ -165,6 +173,18 @@ func DecodeIndexKeyPrefix(key kv.Key) (tableID int64, indexID int64, indexValues
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
+	if !isIndexSeekKeyValid(key) {
+		return 0, 0, nil, errInvalidRecordKey.GenWithStack("invalid index record key: %v", key)
+	}
+	tableID = DecodeTableID(key)
+	if tableID == 0 {
+		return 0, 0, nil, errInvalidRecordKey.GenWithStack("invalid index record key tableID: %v", key)
+	}
+	indexValues, indexID, err = codec.DecodeInt(key[prefixLen:])
+	if err != nil || indexID == 0 {
+		return 0, 0, nil, errInvalidRecordKey.GenWithStack("invalid index record key indexID: %v", key)
+	}
+
 	return tableID, indexID, indexValues, nil
 }
 
