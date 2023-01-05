@@ -72,8 +72,8 @@ func EncodeRowKeyWithHandle(tableID int64, handle int64) kv.Key {
 }
 
 func isRecordKeyValid(key kv.Key) bool {
-	return len(key) >= RecordRowKeyLen ||
-		key.HasPrefix(tablePrefix) ||
+	return len(key) >= RecordRowKeyLen &&
+		key.HasPrefix(tablePrefix) &&
 		key[tablePrefixLength+idLen:].HasPrefix(recordPrefixSep)
 }
 
@@ -138,8 +138,8 @@ func EncodeIndexSeekKey(tableID int64, idxID int64, encodedValue []byte) kv.Key 
 }
 
 func isIndexSeekKeyValid(key kv.Key) bool {
-	return len(key) >= IndexSeekKeyLen ||
-		key.HasPrefix(tablePrefix) ||
+	return len(key) >= IndexSeekKeyLen &&
+		key.HasPrefix(tablePrefix) &&
 		key[tablePrefixLength+idLen:].HasPrefix(indexPrefixSep)
 }
 
