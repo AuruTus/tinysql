@@ -69,6 +69,12 @@ func EncodeRowKeyWithHandle(tableID int64, handle int64) kv.Key {
 	return buf
 }
 
+func isRecordKeyValid(key kv.Key) bool {
+	return len(key) >= RecordRowKeyLen ||
+		key.HasPrefix(tablePrefix) ||
+		key[tablePrefixLength+idLen:].HasPrefix(recordPrefixSep)
+}
+
 // DecodeRecordKey decodes the key and gets the tableID, handle.
 func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 	/* Project 1-2: your code here
@@ -98,6 +104,17 @@ func DecodeRecordKey(key kv.Key) (tableID int64, handle int64, err error) {
 	 *   5. understanding the coding rules is a prerequisite for implementing this function,
 	 *      you can learn it in the projection 1-2 course documentation.
 	 */
+	if !isRecordKeyValid(key) {
+		return 0, 0, errInvalidIndexKey.GenWithStack("invalid record key: %v", key)
+	}
+	tableID = DecodeTableID(key)
+	if tableID == 0 {
+		return 0, 0, errInvalidIndexKey.GenWithStack("invalid record key tableID: %v", key)
+	}
+	_, handle, err = codec.DecodeInt(key[prefixLen:])
+	if err != nil || handle == 0 {
+		return 0, 0, errInvalidIndexKey.GenWithStack("invalid record key handle: %+v", err)
+	}
 	return
 }
 
